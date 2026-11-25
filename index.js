@@ -1,4 +1,3 @@
-require('dotenv').config();
 const http = require('http');
 const { Client, GatewayIntentBits, Events } = require('discord.js');
 
