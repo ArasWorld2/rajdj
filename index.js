@@ -10,7 +10,7 @@ const client = new Client({
   ]
 });
 
-// Paste your text channel ID here, or leave '' to post inside the VC's own text chat
+// Paste your text channel ID here (e.g., '123456789012345678'), or leave '' to post inside the VC's built-in text chat
 const TARGET_CHANNEL_ID = '';
 
 client.once(Events.ClientReady, (readyClient) => {
@@ -18,21 +18,29 @@ client.once(Events.ClientReady, (readyClient) => {
 });
 
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
-  // Ignore bots
+  console.log(`Voice update: ${newState.member?.user.tag} | old: ${oldState.channelId} -> new: ${newState.channelId}`);
+
   if (newState.member?.user.bot) return;
 
-  // Trigger only when someone freshly joins a VC (was not in a VC before, and is in one now)
   if (!oldState.channelId && newState.channelId) {
-    const channel = TARGET_CHANNEL_ID
-      ? newState.guild.channels.cache.get(TARGET_CHANNEL_ID)
-      : newState.channel;
+    try {
+      const channel = TARGET_CHANNEL_ID
+        ? await newState.guild.channels.fetch(TARGET_CHANNEL_ID)
+        : newState.channel;
 
-    if (!channel) return;
+      if (!channel) {
+        console.log('Error: Target channel not found.');
+        return;
+      }
 
-    await channel.send({
-      content: `@everyone ${newState.member} joined **${newState.channel.name}** — join the vc now!`,
-      allowedMentions: { parse: ['everyone'] }
-    });
+      await channel.send({
+        content: `@everyone ${newState.member} joined **${newState.channel.name}** — join the vc now!`,
+        allowedMentions: { parse: ['everyone'] }
+      });
+      console.log(`Sent VC ping to #${channel.name}`);
+    } catch (err) {
+      console.error('Failed to send VC ping:', err);
+    }
   }
 });
 
@@ -43,7 +51,6 @@ client.on(Events.MessageCreate, (message) => {
   }
 });
 
-// Keep-alive HTTP server for Northflank health checks
 const port = process.env.PORT || 8080;
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
